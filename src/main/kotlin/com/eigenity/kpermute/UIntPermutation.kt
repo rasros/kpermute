@@ -29,6 +29,7 @@ class UIntPermutation(
     override fun encode(value: Int): Int {
         val u = value.toUInt()
         require(u < usize) { "value out of range [0, $size)" }
+        if (size == 1) return 0
         var x = u and mask
         do {
             repeat(rounds) { r ->
@@ -42,6 +43,7 @@ class UIntPermutation(
     override fun decode(encoded: Int): Int {
         val u = encoded.toUInt()
         require(u < usize) { "value out of range [0, $size)" }
+        if (size == 1) return 0
         var x = u and mask
         do {
             for (r in rounds - 1 downTo 0) {

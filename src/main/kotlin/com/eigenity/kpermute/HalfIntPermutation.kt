@@ -27,6 +27,7 @@ class HalfIntPermutation(
 
     override fun encode(value: Int): Int {
         require(value in 0 until size)
+        if (size == 1) return 0
         var x = value
         do {
             repeat(rounds) { r ->
@@ -39,6 +40,7 @@ class HalfIntPermutation(
 
     override fun decode(encoded: Int): Int {
         require(encoded in 0 until size)
+        if (size == 1) return 0
         var x = encoded
         do {
             for (r in rounds - 1 downTo 0) {

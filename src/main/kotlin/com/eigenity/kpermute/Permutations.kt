@@ -70,7 +70,9 @@ fun intPermutation(
 ): IntPermutation {
     require(rounds >= 0)
     return when {
-        size == 0u -> EmptyIntPermutation
+        size == 0u -> throw IllegalArgumentException("Size zero permutation is not possible.")
+        size == 1u -> SingletonIntPermutation
+        size <= 16u -> ArrayIntPermutation(size.toInt(), rng)
         size == UInt.MAX_VALUE ->
             FullIntPermutation(
                 rng,
