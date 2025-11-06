@@ -57,4 +57,29 @@ class IntPermutationsTest {
         assertEquals(data, restored)
         assertEquals(data.toSet(), shuffled.toSet())
     }
+
+    @Test
+    fun permuted() {
+        val data = listOf("a", "b", "c", "d", "e")
+        val shuffled = data.permuted(Random(24))
+        assertContentEquals(data, shuffled.sorted())
+    }
+
+    @Test
+    fun rangeWrapperRoundTrip() {
+        val base = intPermutation(10, seed = 7)
+        val rp = base.range(20..29)
+        for (v in 20..29) assertEquals(v, rp.decode(rp.encode(v)))
+    }
+
+    @Test
+    fun rangeWrapperIterator() {
+        val base = intPermutation(5, seed = 1)
+        val rp = base.range(5..9)
+        val list = rp.toList()
+        assertEquals(5, list.size)
+        assertTrue(list.all { it in 5..9 })
+        assertEquals(list.toSet().size, 5)
+    }
+
 }

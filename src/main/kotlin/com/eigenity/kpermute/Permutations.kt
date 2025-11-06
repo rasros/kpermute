@@ -93,3 +93,53 @@ fun intPermutation(
         }
     }
 }
+
+/**
+ * Provides an `IntPermutation` instance for values within the given [range].
+ * The implementation and parameters follow the same rules as the size-based
+ * factories, normally using [HalfIntPermutation] for most domains.
+ *
+ * Input Variables:
+ *
+ * [range] The inclusive integer range to permute. Its length determines the
+ * domain size used internally.
+ *
+ * [rng]  A random number generator used to initialize keys and parameters.
+ *
+ * [rounds] The number of permutation rounds. Use 8 for high dispersion and at
+ * least 3 for low requirements.
+ *
+ * The resulting permutation encodes and decodes values directly in [range].
+ */
+@JvmOverloads
+fun intPermutation(
+    range: IntRange,
+    rng: Random = Random.Default,
+    rounds: Int = 0
+): IntPermutation =
+    intPermutation(range.count(), rng, rounds).range(range)
+
+/**
+ * Provides an `IntPermutation` instance for values within the given [range].
+ * The implementation and parameters follow the same rules as the size-based
+ * factories, normally using [HalfIntPermutation] for most domains.
+ *
+ * Input Variables:
+ *
+ * [range] The inclusive integer range to permute. Its length determines the
+ * domain size used internally.
+ *
+ * [rng]  A random number generator used to initialize keys and parameters.
+ *
+ * [rounds] The number of permutation rounds. Use 8 for high dispersion and at
+ * least 3 for low requirements.
+ *
+ * The resulting permutation encodes and decodes values directly in [range].
+ */
+@JvmOverloads
+fun intPermutation(
+    range: IntRange,
+    seed: Long,
+    rounds: Int = 0
+): IntPermutation =
+    intPermutation(range.count(), seed, rounds).range(range)
