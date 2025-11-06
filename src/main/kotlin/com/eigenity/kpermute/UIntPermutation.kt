@@ -6,8 +6,8 @@ import kotlin.random.Random
 class UIntPermutation(
     override val size: Int,
     rng: Random = Random.Default,
-    override val rounds: Int = 3,
-    val const: UInt = 0x7F4A7C15u            // must be odd
+    private val rounds: Int = 3,
+    private val const: UInt = 0x7F4A7C15u            // must be odd
 ) : IntPermutation {
 
     private val usize = size.toUInt()
@@ -29,7 +29,6 @@ class UIntPermutation(
     override fun encode(value: Int): Int {
         val u = value.toUInt()
         require(u < usize) { "value out of range [0, $size)" }
-        if (size == 1) return 0
         var x = u and mask
         do {
             repeat(rounds) { r ->
@@ -43,7 +42,6 @@ class UIntPermutation(
     override fun decode(encoded: Int): Int {
         val u = encoded.toUInt()
         require(u < usize) { "value out of range [0, $size)" }
-        if (size == 1) return 0
         var x = u and mask
         do {
             for (r in rounds - 1 downTo 0) {

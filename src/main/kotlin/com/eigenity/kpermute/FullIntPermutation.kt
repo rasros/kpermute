@@ -3,8 +3,8 @@ package com.eigenity.kpermute
 import kotlin.random.Random
 
 class FullIntPermutation(
-    rng: Random,
-    override val rounds: Int = 2,
+    rng: Random = Random.Default,
+    private val rounds: Int = 2,
     private val c1: Int = 0x7F4A7C15,
     private val c2: Int = 0x27D4EB2D
 ) : IntPermutation {
