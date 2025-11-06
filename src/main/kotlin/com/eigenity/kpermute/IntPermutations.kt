@@ -2,6 +2,27 @@ package com.eigenity.kpermute
 
 import kotlin.random.Random
 
+/**
+ * Represents a reversible integer permutation over a finite or full 32-bit domain.
+ *
+ * Implementations provide deterministic bijections for integer sets, allowing
+ * repeatable shuffling, masking, or indexing without storing lookup tables.
+ *
+ * ## Security note
+ * These permutations are **not cryptographic**. They use lightweight avalanche
+ * and cycle-walking techniques for uniform dispersion, but provide no
+ * pseudorandom permutation (PRP) or resistance to inversion by an adversary.
+ *
+ * ## Domain semantics
+ * - For finite domains, `size` defines the valid range `[0, size)`.
+ * - A `size` of `-1` represents the full signed 32-bit integer space.
+ * - `encodeUnchecked`/`decodeUnchecked` skip bounds checks for performance;
+ *   callers must ensure arguments are within the domain when `size >= 0`.
+ *
+ * Implementations are iterable and yield `encode(i)` for all valid `i`.
+ *
+ * Use the factory method [intPermutation] for instantiation.
+ */
 interface IntPermutation : Iterable<Int> {
 
     /**
