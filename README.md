@@ -51,12 +51,13 @@ fun main() {
 
     // Example 2: Obfuscate UUID-v7 IDs
     // hiding timestamp and UUID-version
-    val uuidPerm = longPermutation(-1, seed = 1L)
+    val uuidPerm1 = longPermutation(-1, seed = 1L)
+    val uuidPerm2 = longPermutation(-1, seed = 3L)
     val uuid = Uuid.parse("019a67e6-02a0-7646-a5cd-ddcb69d3b71c")
     val encoded = uuid.toLongs { l1, l2 ->
         Uuid.fromLongs(
-            uuidPerm.encode(l1),
-            uuidPerm.encode(l2 xor 5955220737039975883L)
+            uuidPerm1.encode(l1),
+            uuidPerm2.encode(l2)
         )
     }
     println("encoded: $encoded")
@@ -90,49 +91,70 @@ fun main() {
 
 ### How it works
 
-KPermute creates a **deterministic shuffle** of all numbers in a chosen range,
-for example, from `0` to `9999`.
-Given the same seed, it always produces the same unique rearrangement of values,
-but every number appears exactly once.
-This means you can "scramble" IDs or keys in a repeatable way, without storing
-lookup tables.
+KPermute builds **keyed, reversible permutations** over integer domains using
+simple xor–shift–multiply mixers plus cycle-walking. It never stores lookup
+tables and always supports decoding back to the original value.
 
-Under the hood, each number is passed through a small **mixing function**
-several times.
-That function multiplies by a constant, adds a secret key, and blends bits
-together using fast XOR and shift operations.
-Because these operations are designed to be reversible, the process can also run
-backwards:
-calling `decode()` will recover the original number from its scrambled form.
+#### Domains and implementations
 
-The algorithm behaves a bit like a simplified **Feistel cipher** (used in many
-encryption systems), but instead of encrypting text, it permutes integers.
-It applies several invertible "rounds" of hashing to mix the bits thoroughly,
-then repeats until the result fits in your target range.
-The result is a fast and lightweight way to map integers to unique pseudo-random
-counterparts.
+A permutation has a `size`:
 
-### 🔗 Sources
+- `size > 0` → finite domain `[0, size)`
+- `size == -1` / `-1L` → full 32- or 64-bit domain
+- `size < 0` (not `-1`) → "unsigned" variants via `UIntPermutation` /
+  `ULongPermutation` (internally modulo `2^32` / `2^64`)
 
-The original source of this implementation is unknown but is presumed to be in
-the public domain.  
-This version includes modifications and refinements by me.  
-If you recognize or can identify the original source, please contact me.
+Factories pick an implementation:
 
-- [Ciphers with Arbitrary Finite Domains (2002)](https://web.cs.ucdavis.edu/~rogaway/papers/subset.pdf):  
-  Introduces the cycle-walking method for mapping a permutation over a
-  power-of-two space into a smaller domain.
-- [Format-Preserving Encryption (FFX) (2009)](https://csrc.nist.gov/csrc/media/projects/block-cipher-techniques/documents/bcm/proposed-modes/ffx/ffx-spec.pdf):  
-  Defines standard format-preserving encryption constructions that also rely on
-  cycle-walking.
-- [Feistel Ciphers](https://en.wikipedia.org/wiki/Feistel_cipher):  
-  Classical invertible round-based structure used in many block ciphers;
-  `KPermute` is simpler but more efficient.
-- [Integer Hash Functions (1997)](http://burtleburtle.net/bob/hash/integer.html):  
-  Overview of multiply–xor–shift integer mixers used in `KPermute`’.
-- [An Experimental Exploration of Marsaglia’s Xorshift Generators (2016)](https://arxiv.org/pdf/1402.6246.pdf):  
-  Analyzes xor/shift mixers and their statistical properties.
-- [xxHash (2014)](https://github.com/Cyan4973/xxHash):  
-  Fast non-cryptographic hash function using constant multipliers and
-  bit-scrambling, closely related in design to `KPermute`’s mixing logic. The
-  default primes are chosen from here.
+- `Array[Int|Long]Permutation` for tiny domains (`size <= 16`) using a shuffled
+  array and its inverse.
+- `Half[Int|Long]Permutation` for general finite domains using cycle-walking.
+- `Full[Int|Long]Permutation` for the full bit-width (no cycle-walking).
+- `UIntPermutation` / `ULongPermutation` for negative `size` (unsigned-style
+  behavior).
+
+Range factories `intPermutation(range)` and `longPermutation(range)` wrap these
+with a `range(...)` view so you can work directly on e.g. `-100..199`.
+
+#### Mixing and cycle-walking
+
+For non-array variants, each round:
+
+1. Multiplies by an odd constant.
+2. Adds or xors a secret per-round key.
+3. Applies xor-shift steps (`x ^= x >>> s`) to diffuse bits.
+
+All operations are invertible using modular inverses and xor-shift inversion
+[1][3][4][5]. For domains that are not powers of two, KPermute applies
+cycle-walking [1][2]: it permutes in the next power-of-two space and re-applies
+the permutation until the result falls in `[0, size)`.
+
+---
+
+### References
+
+[1] P. Rogaway and T. Shrimpton,  
+"Ciphers with Arbitrary Finite Domains," CT-RSA 2002.  
+<https://web.cs.ucdavis.edu/~rogaway/papers/subset.pdf>
+
+[2] M. Bellare, P. Rogaway, T. Spies,  
+"The FFX Mode of Operation for Format-Preserving Encryption," NIST
+submission, 2010.
+<https://csrc.nist.gov/csrc/media/projects/block-cipher-techniques/documents/bcm/proposed-modes/ffx/ffx-spec.pdf>
+
+[3] D. E. Knuth,  
+*The Art of Computer Programming, Volume 2: Seminumerical Algorithms,* 3rd ed., 1997.
+
+[4] B. Jenkins,  
+"Integer Hash Functions," 1997.
+<http://burtleburtle.net/bob/hash/integer.html>
+
+[5] S. Vigna,  
+"An Experimental Exploration of Marsaglia's Xorshift Generators, Scrambled,"
+TOMS 42(4), 2016.  
+Preprint: <https://arxiv.org/pdf/1402.6246.pdf>
+
+[6] Y. Collet,  
+"xxHash – Extremely fast hash algorithm," 2014.  
+<https://github.com/Cyan4973/xxHash>
+```
