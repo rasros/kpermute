@@ -3,27 +3,27 @@ package com.eigenity.kpermute
 import kotlin.random.Random
 
 class ArrayLongPermutation(
-    override val size: Int,
+    override val size: Long,
     rng: Random
-) : IntPermutation {
-    private val array = IntArray(size) { it }
-    private val inverse: IntArray
+) : LongPermutation {
+    private val array = LongArray(size.toInt()) { it.toLong() }
+    private val inverse: LongArray
 
     init {
         array.shuffle(rng)
-        inverse = IntArray(size)
-        for (i in 0..<size) {
-            inverse[array[i]] = i
+        inverse = LongArray(size.toInt())
+        for (i in 0..<size.toInt()) {
+            inverse[array[i].toInt()] = i.toLong()
         }
     }
 
-    override fun encodeUnchecked(value: Int): Int = array[value]
+    override fun encodeUnchecked(value: Long): Long = array[value.toInt()]
 
-    override fun decodeUnchecked(encoded: Int): Int = inverse[encoded]
+    override fun decodeUnchecked(encoded: Long): Long = inverse[encoded.toInt()]
 
-    override fun iterator(offset: Int): IntIterator =
-        if (offset == 0) array.iterator()
-        else array.sliceArray(offset..<size).iterator()
+    override fun iterator(offset: Long): LongIterator =
+        if (offset == 0L) array.iterator()
+        else array.sliceArray(offset.toInt()..<size.toInt()).iterator()
 
-    override fun toString(): String = "ArrayIntPermutation(size=$size)"
+    override fun toString(): String = "ArrayLongPermutation(size=$size)"
 }
