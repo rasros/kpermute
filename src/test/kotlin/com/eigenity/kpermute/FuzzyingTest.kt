@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test
 import kotlin.math.*
 import kotlin.random.Random
 import kotlin.random.nextUInt
+import kotlin.random.nextULong
 import kotlin.test.assertEquals
 
 class FuzzyingTest {
@@ -13,15 +14,16 @@ class FuzzyingTest {
     private val innerIterations = 1000
     private val rng = Random(42)
 
+    // -------- Int permutations --------
 
     private fun choseIntPerm(): Triple<IntPermutation, Long, Int> {
         var size: Int
         do {
             size = when (rng.nextInt(4)) {
-                0 -> rng.nextInt(17)      // ArrayIntPermutation
+                0 -> rng.nextInt(17)        // ArrayIntPermutation
                 1 -> rng.nextInt()          // HalfIntPermutation
                 2 -> rng.nextUInt().toInt() // UIntPermutation
-                else -> -1 // FullIntPermutation
+                else -> -1                  // FullIntPermutation
             }
         } while (size == 0)
         val rounds = rng.nextInt(2, 8)
@@ -70,6 +72,7 @@ class FuzzyingTest {
             UIntPermutation::class.simpleName!! to ArrayList(),
             FullIntPermutation::class.simpleName!! to ArrayList(),
         )
+
         repeat(outerIterations) { outerIdx ->
 
             val (perm, seed, rounds) = choseIntPerm()
@@ -115,12 +118,103 @@ class FuzzyingTest {
 
             if (outerIdx % 1_000 == 0 && outerIdx > 0) {
                 val s = pValuesByClass.map {
-                    "${it.key} = ${
-                        String.format(
-                            "%.3f",
-                            it.value.average()
-                        )
-                    }"
+                    "${it.key} = ${String.format("%.3f", it.value.average())}"
+                }
+                println(s)
+            }
+        }
+    }
+
+    // -------- Long permutations --------
+
+    private fun choseLongPerm(): Triple<LongPermutation, Long, Int> {
+        val rounds = rng.nextInt(2, 8)
+        val seed = rng.nextLong()
+        val localRng = Random(seed)
+
+        val perm: LongPermutation = when (rng.nextInt(3)) {
+            // HalfLongPermutation over a bounded positive domain
+            0 -> {
+                val size = rng.nextLong(1L, 1L shl 20) // up to ~1M
+                HalfLongPermutation(size, localRng, rounds)
+            }
+            // ULongPermutation over a bounded positive domain
+            1 -> {
+                val size = rng.nextLong(1L, 1L shl 20)
+                ULongPermutation(size, localRng, rounds)
+            }
+            // FullLongPermutation over entire signed 64-bit space
+            else -> FullLongPermutation(localRng, rounds)
+        }
+
+        return Triple(perm, seed, rounds)
+    }
+
+    @Test
+    fun roundTripWithStatsLong() {
+        // Same idea as Int, but testing HalfLongPermutation, ULongPermutation, FullLongPermutation.
+
+        val pValuesByClass = mapOf<String, MutableList<Double>>(
+            HalfLongPermutation::class.simpleName!! to ArrayList(),
+            ULongPermutation::class.simpleName!! to ArrayList(),
+            FullLongPermutation::class.simpleName!! to ArrayList(),
+        )
+
+        repeat(outerIterations) { outerIdx ->
+
+            val (perm, seed, rounds) = choseLongPerm()
+            val size = perm.size     // >0 for half/ulong, -1L sentinel for full
+            val usize = size.toULong()
+            val className = perm::class.simpleName!!
+
+            // Welford
+            var mean = 0.0
+            var m2 = 0.0
+            var count = 0
+
+            repeat(innerIterations) {
+                val x: Long =
+                    if (size > 0L) {
+                        rng.nextLong(size)          // 0 .. size-1
+                    } else {
+                        // FullLongPermutation: sample whole 64-bit space via ULong
+                        rng.nextULong(0uL, usize).toLong()
+                    }
+
+                val y = perm.encode(x)
+                val z = perm.decode(y)
+
+                assertEquals(
+                    x, z, "round-trip failed (Long): " +
+                            "size=$size rounds=$rounds seed=$seed x=$x y=$y z=$z perm=$className"
+                )
+
+                val yu = y.toULong()
+                val yf = yu.toDouble()
+
+                count++
+                val delta = yf - mean
+                mean += delta / count
+                m2 += delta * (yf - mean)
+
+                // For finite domains, ensure encode() stays inside [0, size).
+                // For full domain (size=-1L, usize==ULong.MAX_VALUE), this is always true.
+                assertTrue(yu in 0uL..<usize) {
+                    "support anomaly (Long): perm=$className size=$size " +
+                            "rounds=$rounds seed=$seed"
+                }
+            }
+
+            val variance = if (count > 1) m2 / (count - 1) else 0.0
+            val expectedMean = (usize.toDouble() - 1.0) / 2.0
+
+            val pValue = meanTPValue(mean, expectedMean, variance, count)
+
+            pValuesByClass[className]!!.add(pValue)
+
+            if (outerIdx % 1_000 == 0 && outerIdx > 0) {
+                val s = pValuesByClass.map {
+                    "${it.key} = ${String.format("%.3f", it.value.average())}"
                 }
                 println(s)
             }
