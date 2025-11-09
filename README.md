@@ -157,4 +157,3 @@ Preprint: <https://arxiv.org/pdf/1402.6246.pdf>
 [6] Y. Collet,  
 "xxHash – Extremely fast hash algorithm," 2014.  
 <https://github.com/Cyan4973/xxHash>
-```
