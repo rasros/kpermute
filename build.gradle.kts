@@ -6,6 +6,8 @@ plugins {
     id("org.jetbrains.kotlinx.kover") version "0.9.3"
     `maven-publish`
     signing
+
+    id("io.github.sgtsilvio.gradle.maven-central-publishing") version "0.4.1"
 }
 
 group = "com.eigenity"
@@ -64,15 +66,8 @@ publishing {
             }
         }
     }
+
     repositories {
-        maven {
-            name = "central"
-            url = uri("https://central.sonatype.com/api/v1/publisher/upload")
-            credentials {
-                username = System.getenv("CENTRAL_PORTAL_USER")
-                password = System.getenv("CENTRAL_PORTAL_TOKEN")
-            }
-        }
         maven {
             name = "localStaging"
             url = uri(layout.buildDirectory.dir("staging-repo"))

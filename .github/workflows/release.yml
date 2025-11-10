@@ -2,7 +2,7 @@ name: release
 on:
   push:
     tags:
-      - 'v*'   # e.g. v1.0.0
+      - 'v*'
 
 jobs:
   publish:
@@ -25,4 +25,4 @@ jobs:
           CENTRAL_PORTAL_TOKEN: ${{ secrets.CENTRAL_PORTAL_TOKEN }}
           ORG_GRADLE_PROJECT_signingKey: ${{ secrets.SIGNING_KEY }}
           ORG_GRADLE_PROJECT_signingPassword: ${{ secrets.SIGNING_PASSWORD }}
-        run: ./gradlew --no-daemon publish
+        run: ./gradlew --no-daemon publishToMavenCentral
