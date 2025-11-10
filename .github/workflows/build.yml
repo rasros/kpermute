@@ -1,7 +1,10 @@
-name: Run tests and upload coverage
+name: build
 
 on:
-  push
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   test:
@@ -26,7 +29,8 @@ jobs:
       - name: Run tests with coverage
         run: ./gradlew koverXmlReport
 
-      - name: Upload results to Codecov
+      - name: Upload results to Codecov (main only)
+        if: github.ref == 'refs/heads/main'
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
