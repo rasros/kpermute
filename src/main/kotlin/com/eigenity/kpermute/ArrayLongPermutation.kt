@@ -2,6 +2,15 @@ package com.eigenity.kpermute
 
 import kotlin.random.Random
 
+/**
+ * Finite in-memory long permutation backed by a `LongArray` lookup table.
+ *
+ * Builds a random bijection over `[0, size)` by shuffling the identity mapping
+ * and precomputing the inverse. Encode and decode are O(1) array lookups.
+ *
+ * @param [size] Size of the permutation domain; valid inputs are `[0, size)`.
+ * @param [rng] Random generator used to create the shuffled mapping.
+ */
 class ArrayLongPermutation(
     override val size: Long,
     rng: Random

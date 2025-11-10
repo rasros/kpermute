@@ -1,42 +1,54 @@
 package com.eigenity.kpermute
 
 /**
- * Represents a reversible integer permutation over a finite or full 64-bit domain.
+ * Reversible permutation over a 64-bit integer domain.
  *
- * Implementations provide deterministic bijections for integer sets, allowing
- * repeatable shuffling, masking, or indexing without storing lookup tables.
+ * A [LongPermutation] defines a bijection on either:
+ * - a finite domain `[0, size)` when `size >= 0L`, or
+ * - the full signed 64-bit space when `size == -1L`.
  *
- * ## Security note
- * These permutations are **not cryptographic**. They use lightweight avalanche
- * and cycle-walking techniques for uniform dispersion, but provide no
- * pseudorandom permutation (PRP) or resistance to inversion by an adversary.
+ * Implementations are deterministic: the same instance always maps the same
+ * input to the same output, and [decode] is the exact inverse of [encode].
+ * They are suitable for repeatable shuffling, masking, and index remapping
+ * without full lookup tables.
  *
- * ## Domain semantics
- * - For finite domains, `size` defines the valid range `[0, size)`.
- * - A `size` of `-1L` represents the full signed 64-bit integer space.
- * - `encodeUnchecked`/`decodeUnchecked` skip bounds checks for performance;
- *   callers must ensure arguments are within the domain when `size >= 0L`.
+ * Security note:
+ * These permutations are not cryptographic. They are not PRPs and are not
+ * intended to resist adversarial inversion or analysis.
  *
- * Implementations are iterable and yield `encode(i)` for all valid `i`.
+ * Contract:
+ * - For finite domains (`size >= 0L`), valid inputs to [encode] and [decode]
+ *   are in `[0, size)`. Out-of-range values trigger [IllegalArgumentException].
+ * - [encodeUnchecked] and [decodeUnchecked] skip range checks and must only
+ *   be called with valid domain values when `size >= 0L`.
+ * - [iterator] yields `encode(i)` for all valid `i` in index order.
  *
- * Use the factory method [longPermutation] for instantiation.
+ * Use [longPermutation] to construct concrete implementations.
  */
 interface LongPermutation : Iterable<Long> {
 
     /**
-     * Domain of the permutation.
+     * Domain size of the permutation.
+     *
+     * - `size >= 0L`: finite domain `[0, size)`.
+     * - `size == -1L`: full signed 64-bit domain.
      */
     val size: Long
 
-
-    /** Fast path. No range checks. Precondition: if size >= 0 then arg ∈ [0, size). */
+    /**
+     * Encodes a [value] without range checks.
+     */
     fun encodeUnchecked(value: Long): Long
 
-    /** Fast path. No range checks. Precondition: if size >= 0 then arg ∈ [0, size). */
+    /**
+     * Decodes a previously [encoded] value without range checks.
+     */
     fun decodeUnchecked(encoded: Long): Long
 
     /**
-     * Encode an integer in [0, [size]) into its permuted value.
+     * Encodes a long in the permutation domain into its permuted value.
+     *
+     * For finite domains (`size >= 0L`), [value] must be in `[0, size)`.
      */
     fun encode(value: Long): Long {
         if (size >= 0) require(value in 0 until size) {
@@ -46,7 +58,9 @@ interface LongPermutation : Iterable<Long> {
     }
 
     /**
-     *  Decode a previously encoded integer back to its original value.
+     * Decodes a previously encoded long back to its original value.
+     *
+     * For finite domains (`size >= 0L`), [encoded] must be in `[0, size)`.
      */
     fun decode(encoded: Long): Long {
         if (size >= 0) require(encoded in 0 until size) {
@@ -56,15 +70,20 @@ interface LongPermutation : Iterable<Long> {
     }
 
     /**
-     * Iterator that yields encoded values for [0, size).
+     * Returns an iterator over `encode(i)` for all `i` in `[0, size)` for
+     * finite domains, or over the full 64-bit space when `size == -1L`.
      */
     override fun iterator(): LongIterator = iterator(0)
 
     /**
-     * Iterator that yields encoded values for [offset, size).
+     * Returns an iterator over `encode(i)` for indices in `[offset, size)`.
+     *
+     * For finite domains, [offset] is an index in `0..size`. For full-domain
+     * implementations, semantics are defined by the implementation.
      */
     fun iterator(offset: Long): LongIterator
 }
+
 
 /**
  * Returns a view of this permutation that operates on [range] instead of `[0, size)`.

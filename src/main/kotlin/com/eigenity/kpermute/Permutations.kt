@@ -5,25 +5,29 @@ package com.eigenity.kpermute
 import kotlin.random.Random
 
 /**
- * Provides an `[IntPermutation]` instance, a fast repeatable integer permutation
- * for shuffling lists and data masking using a cycle-walking hash algorithm.
+ * Creates an [IntPermutation] for a contiguous integer domain.
  *
- * Input Variables:
+ * The concrete implementation depends on [size]:
+ * - `size == -1` uses [FullIntPermutation] over the full signed 32-bit range.
+ * - `size < 0` (excluding `-1`) uses [UIntPermutation] over an unsigned-style domain.
+ * - `0 <= size <= 16` uses [ArrayIntPermutation].
+ * - `size > 16` uses [HalfIntPermutation] with cycle-walking over a 2^k block.
  *
- * [size] The size of the integer domain to permute. This also decides which
- * implementation is used, normally [HalfIntPermutation] but for negative values
- * [UIntPermutation] is used and for -1 [FullIntPermutation] is used.
+ * When [rounds] is `0`, a size-dependent default is chosen to balance speed and
+ * dispersion. The permutation is reproducible for a given [rng] state.
  *
- * [rng] A random number generator used to initialize keys and parameters.
- *
- * [rounds] The number of rounds in the permutation algorithm. Use 8 for high
- * dispersion requirements and minimum 3 for low requirements.
+ * @param size domain size. For non-negative values the domain is `[0, size)`.
+ *             Special values: `-1` selects a full 32-bit permutation, other
+ *             negative values select an unsigned-style domain.
+ * @param rng random source used to derive internal keys and parameters.
+ * @param rounds number of mixing rounds; `0` selects a reasonable default per
+ *               implementation.
+ * @return an [IntPermutation] with domain `[0, size)` or the full 32-bit space
+ *         when `size == -1`.
  */
 @JvmOverloads
 fun intPermutation(
-    size: Int = Int.MAX_VALUE,
-    rng: Random = Random.Default,
-    rounds: Int = 0
+    size: Int = Int.MAX_VALUE, rng: Random = Random.Default, rounds: Int = 0
 ): IntPermutation {
     require(rounds >= 0) { "rounds must be >= 0" }
 
@@ -41,74 +45,62 @@ fun intPermutation(
     }
 
     return when {
-        size == -1 ->
-            FullIntPermutation(
-                rng,
-                if (rounds == 0) 2 else rounds // FullInt needs few rounds
-            )
+        size == -1 -> FullIntPermutation(
+            rng, if (rounds == 0) 2 else rounds // FullInt needs few rounds
+        )
 
-        size < 0 ->
-            UIntPermutation(
-                size,
-                rng,
-                if (rounds == 0) defaultRoundsForUInt(size) else rounds
-            )
+        size < 0 -> UIntPermutation(
+            size, rng, if (rounds == 0) defaultRoundsForUInt(size) else rounds
+        )
 
         size <= 16 -> ArrayIntPermutation(size, rng)
 
-        else ->
-            HalfIntPermutation(
-                size,
-                rng,
-                if (rounds == 0) defaultRoundsForHalf(size) else rounds
-            )
+        else -> HalfIntPermutation(
+            size, rng, if (rounds == 0) defaultRoundsForHalf(size) else rounds
+        )
     }
 }
 
 /**
- * Provides an `[IntPermutation]` instance, a fast repeatable integer permutation
- * for shuffling lists and data masking using a cycle-walking hash algorithm.
+ * Creates an [IntPermutation] using a seed-based [Random] instance.
  *
- * Input Variables:
+ * This overload behaves like [intPermutation] with an explicit [rng], but
+ * derives the random source from [seed]. For a fixed combination of
+ * `[size, seed, rounds]` the resulting permutation is deterministic.
  *
- * [size] The size of the integer domain to permute. This also decides which
- * implementation is used, normally [HalfIntPermutation] but for negative values
- * [UIntPermutation] is used and for -1 [FullIntPermutation] is used.
- *
- * [seed] Used as seed to [Random] to initialize keys and parameters.
- *
- * [rounds] The number of rounds in the permutation algorithm. Use 8 for high
- * dispersion requirements and minimum 3 for low requirements.
+ * @param size domain size; see [intPermutation] for semantics and special values.
+ * @param seed seed used to construct the underlying [Random].
+ * @param rounds number of mixing rounds; `0` selects a reasonable default per
+ *               implementation.
+ * @return an [IntPermutation] with domain `[0, size)` or the full 32-bit space
+ *         when `size == -1`.
+ * @see intPermutation
  */
 @JvmOverloads
 fun intPermutation(
-    size: Int = Int.MAX_VALUE,
-    seed: Long,
-    rounds: Int = 0
+    size: Int = Int.MAX_VALUE, seed: Long, rounds: Int = 0
 ): IntPermutation = intPermutation(size, Random(seed), rounds)
 
 /**
- * Provides an `[IntPermutation]` instance for values within the given [range].
- * The implementation and parameters follow the same rules as the size-based
- * factories, normally using [HalfIntPermutation] for most domains.
+ * Creates an [IntPermutation] for values within the given inclusive [range].
  *
- * Input Variables:
+ * Internally this constructs a permutation over a domain of length
+ * `range.last - range.first + 1`, then wraps it so that [encode] and [decode]
+ * operate directly on values in [range].
  *
- * [range] The inclusive integer range to permute. Its length determines the
- * domain size used internally.
+ * The same implementation selection rules and default [rounds] logic as
+ * [intPermutation] are used based on the range length.
  *
- * [rng]  A random number generator used to initialize keys and parameters.
- *
- * [rounds] The number of permutation rounds. Use 8 for high dispersion and at
- * least 3 for low requirements.
- *
- * The resulting permutation encodes and decodes values directly in [range].
+ * @param range inclusive range of values to permute.
+ * @param rng random source used to derive internal keys and parameters.
+ * @param rounds number of mixing rounds; `0` selects a reasonable default per
+ *               implementation.
+ * @return an [IntPermutation] whose domain is exactly [range].
+ * @throws IllegalArgumentException if [range] is empty or its length exceeds [Int.MAX_VALUE].
  */
 @JvmOverloads
 fun intPermutation(
-    range: IntRange,
-    rng: Random = Random.Default,
-    rounds: Int = 0
+    range: IntRange, rng: Random = Random.Default, rounds: Int = 0
 ): IntPermutation {
     val nLong = range.last.toLong() - range.first.toLong() + 1L
     require(nLong > 0L) {
@@ -121,134 +113,118 @@ fun intPermutation(
 }
 
 /**
- * Provides an `[IntPermutation]` instance for values within the given [range].
- * The implementation and parameters follow the same rules as the size-based
- * factories, normally using [HalfIntPermutation] for most domains.
+ * Creates an [IntPermutation] for the given inclusive [range] using a
+ * seed-based [Random] instance.
  *
- * Input Variables:
+ * This overload behaves like [intPermutation] with an explicit [rng], but
+ * derives the random source from [seed].
  *
- * [range] The inclusive integer range to permute. Its length determines the
- * domain size used internally.
- *
- * [seed] Used as seed to [Random] to initialize keys and parameters.
- *
- * [rounds] The number of permutation rounds. Use 8 for high dispersion and at
- * least 3 for low requirements.
- *
- * The resulting permutation encodes and decodes values directly in [range].
+ * @param range inclusive range of values to permute.
+ * @param seed seed used to construct the underlying [Random].
+ * @param rounds number of mixing rounds; `0` selects a reasonable default per
+ *               implementation.
+ * @return an [IntPermutation] whose domain is exactly [range].
+ * @see intPermutation
  */
 fun intPermutation(
-    range: IntRange,
-    seed: Long,
-    rounds: Int = 0
+    range: IntRange, seed: Long, rounds: Int = 0
 ): IntPermutation = intPermutation(range, Random(seed), rounds)
 
 /**
- * Provides a `[LongPermutation]` instance, a fast repeatable integer permutation
- * for shuffling lists and data masking using a cycle-walking hash algorithm.
+ * Creates a [LongPermutation] for a contiguous long domain.
  *
- * Input Variables:
+ * The concrete implementation depends on [size]:
+ * - `size == -1L` uses [FullLongPermutation] over the full signed 64-bit range.
+ * - `size < 0L` (excluding `-1L`) uses [ULongPermutation] over an unsigned-style domain.
+ * - `0 <= size <= 16L` uses [ArrayLongPermutation].
+ * - `size > 16L` uses [HalfLongPermutation] with cycle-walking over a 2^k block.
  *
- * [size] The size of the integer domain to permute. This also decides which
- * implementation is used, normally `HalfLongPermutation` but for negative values
- * `ULongPermutation` is used and for -1 `FullLongPermutation` is used.
+ * When [rounds] is `0`, a size-dependent default is chosen to balance speed and
+ * dispersion. The permutation is reproducible for a given [rng] state.
  *
- * [rng] A random number generator used to initialize keys and parameters.
- *
- * [rounds] The number of rounds in the permutation algorithm. Use 8 for high
- * dispersion requirements and minimum 3 for low requirements.
+ * @param size domain size. For non-negative values the domain is `[0, size)`.
+ *             Special values: `-1L` selects a full 64-bit permutation, other
+ *             negative values select an unsigned-style domain.
+ * @param rng random source used to derive internal keys and parameters.
+ * @param rounds number of mixing rounds; `0` selects a reasonable default per
+ *               implementation.
+ * @return a [LongPermutation] with domain `[0, size)` or the full 64-bit space
+ *         when `size == -1L`.
  */
 @JvmOverloads
 fun longPermutation(
-    size: Long = Long.MAX_VALUE,
-    rng: Random = Random.Default,
-    rounds: Int = 0
+    size: Long = Long.MAX_VALUE, rng: Random = Random.Default, rounds: Int = 0
 ): LongPermutation {
-        require(rounds >= 0) { "rounds must be >= 0" }
+    require(rounds >= 0) { "rounds must be >= 0" }
 
-        fun defaultRoundsForHalf(n: Long): Int = when {
-            n <= 1L shl 10 -> 3          // up to 1 K
-            n <= 1L shl 20 -> 4          // up to 1 M
-            else -> 6                    // larger domains
-        }
-
-        fun defaultRoundsForULong(n: Long): Int = when {
-            n <= 1L shl 16 -> 3
-            n <= 1L shl 24 -> 4
-            else -> 5
-        }
-
-        return when {
-            size == -1L ->
-                FullLongPermutation(
-                    rng,
-                    if (rounds == 0) 2 else rounds
-                )
-
-            size < 0L ->
-                ULongPermutation(
-                    size,
-                    rng,
-                    if (rounds == 0) defaultRoundsForULong(-size) else rounds
-                )
-
-            size <= 16L ->
-                ArrayLongPermutation(size, rng)
-
-            else ->
-                HalfLongPermutation(
-                    size,
-                    rng,
-                    if (rounds == 0) defaultRoundsForHalf(size) else rounds
-                )
-        }
+    fun defaultRoundsForHalf(n: Long): Int = when {
+        n <= 1L shl 10 -> 3          // up to 1 K
+        n <= 1L shl 20 -> 4          // up to 1 M
+        else -> 6                    // larger domains
     }
 
+    fun defaultRoundsForULong(n: Long): Int = when {
+        n <= 1L shl 16 -> 3
+        n <= 1L shl 24 -> 4
+        else -> 5
+    }
 
+    return when {
+        size == -1L -> FullLongPermutation(
+            rng, if (rounds == 0) 2 else rounds
+        )
+
+        size < 0L -> ULongPermutation(
+            size, rng, if (rounds == 0) defaultRoundsForULong(-size) else rounds
+        )
+
+        size <= 16L -> ArrayLongPermutation(size, rng)
+
+        else -> HalfLongPermutation(
+            size, rng, if (rounds == 0) defaultRoundsForHalf(size) else rounds
+        )
+    }
+}
 
 /**
- * Provides a `[LongPermutation]` instance, a fast repeatable integer permutation
- * for shuffling lists and data masking using a cycle-walking hash algorithm.
+ * Creates a [LongPermutation] using a seed-based [Random] instance.
  *
- * Input Variables:
+ * This overload behaves like [longPermutation] with an explicit [rng], but
+ * derives the random source from [seed]. For a fixed combination of
+ * `[size, seed, rounds]` the resulting permutation is deterministic.
  *
- * [size] The size of the integer domain to permute. This also decides which
- * implementation is used, normally `HalfLongPermutation` but for negative values
- * `ULongPermutation` is used and for -1 `FullLongPermutation` is used.
- *
- * [seed] Used as seed to [Random] to initialize keys and parameters.
- *
- * [rounds] The number of rounds in the permutation algorithm. Use 8 for high
- * dispersion requirements and minimum 3 for low requirements.
+ * @param size domain size; see [longPermutation] for semantics and special values.
+ * @param seed seed used to construct the underlying [Random].
+ * @param rounds number of mixing rounds; `0` selects a reasonable default per
+ *               implementation.
+ * @return a [LongPermutation] with domain `[0, size)` or the full 64-bit space
+ *         when `size == -1L`.
+ * @see longPermutation
  */
 fun longPermutation(
-    size: Long = Long.MAX_VALUE,
-    seed: Long,
-    rounds: Int = 0
+    size: Long = Long.MAX_VALUE, seed: Long, rounds: Int = 0
 ): LongPermutation = longPermutation(size, Random(seed), rounds)
 
 /**
- * Provides a `[LongPermutation]` instance for values within the given [range].
- * The implementation and parameters follow the same rules as the size-based
- * factories, normally using `HalfLongPermutation` for most domains.
+ * Creates a [LongPermutation] for values within the given inclusive [range].
  *
- * Input Variables:
+ * Internally this constructs a permutation over a domain of length
+ * `range.last - range.first + 1`, then wraps it so that [encode] and [decode]
+ * operate directly on values in [range].
  *
- * [range] The inclusive integer range to permute. Its length determines the
- * domain size used internally.
+ * The same implementation selection rules and default [rounds] logic as
+ * [longPermutation] are used based on the range length.
  *
- * [rng]  A random number generator used to initialize keys and parameters.
- *
- * [rounds] The number of permutation rounds. Use 8 for high dispersion and at
- * least 3 for low requirements.
- *
- * The resulting permutation encodes and decodes values directly in [range].
+ * @param range inclusive range of values to permute.
+ * @param rng random source used to derive internal keys and parameters.
+ * @param rounds number of mixing rounds; `0` selects a reasonable default per
+ *               implementation.
+ * @return a [LongPermutation] whose domain is exactly [range].
+ * @throws IllegalArgumentException if [range] is empty or its length exceeds [Long.MAX_VALUE].
  */
 @JvmOverloads
 fun longPermutation(
-    range: LongRange,
-    rng: Random = Random.Default,
-    rounds: Int = 0
+    range: LongRange, rng: Random = Random.Default, rounds: Int = 0
 ): LongPermutation {
     val nULong = range.last.toULong() - range.first.toULong() + 1uL
     require(nULong > 0uL) {
@@ -261,25 +237,20 @@ fun longPermutation(
 }
 
 /**
- * Provides a `[LongPermutation]` instance for values within the given [range].
- * The implementation and parameters follow the same rules as the size-based
- * factories, normally using `HalfLongPermutation` for most domains.
+ * Creates a [LongPermutation] for the given inclusive [range] using a
+ * seed-based [Random] instance.
  *
- * Input Variables:
+ * This overload behaves like [longPermutation] with an explicit [rng], but
+ * derives the random source from [seed].
  *
- * [range] The inclusive integer range to permute. Its length determines the
- * domain size used internally.
- *
- * [seed] Used as seed to [Random] to initialize keys and parameters.
- *
- * [rounds] The number of permutation rounds. Use 8 for high dispersion and at
- * least 3 for low requirements.
- *
- * The resulting permutation encodes and decodes values directly in [range].
+ * @param range inclusive range of values to permute.
+ * @param seed seed used to construct the underlying [Random].
+ * @param rounds number of mixing rounds; `0` selects a reasonable default per
+ *               implementation.
+ * @return a [LongPermutation] whose domain is exactly [range].
+ * @see longPermutation
  */
 @JvmOverloads
 fun longPermutation(
-    range: LongRange,
-    seed: Long,
-    rounds: Int = 0
+    range: LongRange, seed: Long, rounds: Int = 0
 ): LongPermutation = longPermutation(range, Random(seed), rounds)

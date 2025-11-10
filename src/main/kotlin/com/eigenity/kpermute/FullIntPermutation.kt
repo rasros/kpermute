@@ -2,6 +2,18 @@ package com.eigenity.kpermute
 
 import kotlin.random.Random
 
+/**
+ * Full 32-bit integer permutation over the entire signed `Int` domain.
+ *
+ * Uses an invertible hash built from XOR, shifts, and odd multipliers with
+ * per-round keys. No tables are stored; encode and decode apply forward and
+ * inverse rounds respectively.
+ *
+ * @param [rng] Source of randomness for generating round keys.
+ * @param [rounds] Number of mixing rounds; more rounds increase dispersion.
+ * @param [c1] First odd multiplicative constant used in the mixing steps.
+ * @param [c2] Second odd multiplicative constant used in the mixing steps.
+ */
 class FullIntPermutation(
     rng: Random = Random.Default,
     private val rounds: Int = 2,

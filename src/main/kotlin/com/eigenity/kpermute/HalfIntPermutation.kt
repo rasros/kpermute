@@ -3,6 +3,18 @@ package com.eigenity.kpermute
 import kotlin.math.absoluteValue
 import kotlin.random.Random
 
+/**
+ * Finite integer permutation using cycle-walking over a 2^k-sized block.
+ *
+ * Embeds the domain `[0, size)` in a power-of-two block and applies reversible
+ * affine steps plus XOR-shift mixing. Outputs outside `[0, size)` are
+ * rejected and walked until they fall back inside the domain.
+ *
+ * @param [size] Size of the permutation domain; valid inputs are `[0, size)`.
+ * @param [rng] Random generator used to derive per-round keys.
+ * @param [rounds] Number of mixing rounds; higher values increase dispersion.
+ * @param [const] Odd multiplicative constant used in each affine step.
+ */
 class HalfIntPermutation(
     override val size: Int = Int.MAX_VALUE,
     rng: Random = Random.Default,
