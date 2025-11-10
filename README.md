@@ -47,24 +47,12 @@ implementation("com.eigenity:kpermute:1.0.0")
 ```kotlin
 fun main() {
     // Example 1: Obfuscate numeric IDs reproducibly
-    val intIdPerm = intPermutation(seed = 1L)
-    val intId = 49102490
-    val intIdEncoded = intIdPerm.encode(intId)
-    println("encoded: $intIdEncoded (always prints 1394484051)")
+    val idPerm = longPermutation(seed = 1L)
+    val longId = 49102490812045L
+    val intIdEncoded = idPerm.encode(longId)
+    println("encoded: $intIdEncoded (always prints 3631103739497407856)")
 
-    // Example 2: Obfuscate UUID-v7 IDs (hide timestamp and version)
-    val uuidPerm1 = longPermutation(-1, seed = 1L)
-    val uuidPerm2 = longPermutation(-1, seed = 3L)
-    val uuid = Uuid.parse("019a67e6-02a0-7646-a5cd-ddcb69d3b71c")
-    val encoded = uuid.toLongs { l1, l2 ->
-        Uuid.fromLongs(
-            uuidPerm1.encode(l1),
-            uuidPerm2.encode(l2)
-        )
-    }
-    println("encoded: $encoded")
-
-    // Example 3: Shuffle a large list lazily
+    // Example 2: Shuffle a large list lazily
     val largeList = object : AbstractList<Int>() {
         override val size: Int get() = Int.MAX_VALUE
         override fun get(index: Int) = index
@@ -75,12 +63,12 @@ fun main() {
     val unshuffled = shuffled.unpermuted(perm)
     println("unshuffled: ${unshuffled.take(20)}")
 
-    // Example 4: Custom range permutation with negatives
+    // Example 3: Custom range permutation with negatives
     val rangePerm = intPermutation(-100..199)
     println("encode(-50): ${rangePerm.encode(-50)}")
     println("decode(...): ${rangePerm.decode(rangePerm.encode(-50))}")
 
-    // Example 5: Full 2^32-bit domain permutation
+    // Example 4: Full 2^32-bit domain permutation
     val fullPerm = intPermutation(-1, seed = 1L)
     println(fullPerm.encode(0)) // 1339315335
     println(fullPerm.encode(1)) // -897806455
