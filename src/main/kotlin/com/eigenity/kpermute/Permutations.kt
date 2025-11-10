@@ -64,7 +64,7 @@ fun intPermutation(
 /**
  * Creates an [IntPermutation] using a seed-based [Random] instance.
  *
- * This overload behaves like [intPermutation] with an explicit [rng], but
+ * This overload behaves like [intPermutation] with an explicit rng, but
  * derives the random source from [seed]. For a fixed combination of
  * `[size, seed, rounds]` the resulting permutation is deterministic.
  *
@@ -85,8 +85,8 @@ fun intPermutation(
  * Creates an [IntPermutation] for values within the given inclusive [range].
  *
  * Internally this constructs a permutation over a domain of length
- * `range.last - range.first + 1`, then wraps it so that [encode] and [decode]
- * operate directly on values in [range].
+ * `range.last - range.first + 1`, then wraps it so that [IntPermutation.encode]
+ * and [IntPermutation.decode] operate directly on values in [range].
  *
  * The same implementation selection rules and default [rounds] logic as
  * [intPermutation] are used based on the range length.
@@ -116,7 +116,7 @@ fun intPermutation(
  * Creates an [IntPermutation] for the given inclusive [range] using a
  * seed-based [Random] instance.
  *
- * This overload behaves like [intPermutation] with an explicit [rng], but
+ * This overload behaves like [intPermutation] with an explicit rng, but
  * derives the random source from [seed].
  *
  * @param range inclusive range of values to permute.
@@ -189,7 +189,7 @@ fun longPermutation(
 /**
  * Creates a [LongPermutation] using a seed-based [Random] instance.
  *
- * This overload behaves like [longPermutation] with an explicit [rng], but
+ * This overload behaves like [longPermutation] with an explicit rng, but
  * derives the random source from [seed]. For a fixed combination of
  * `[size, seed, rounds]` the resulting permutation is deterministic.
  *
@@ -209,8 +209,8 @@ fun longPermutation(
  * Creates a [LongPermutation] for values within the given inclusive [range].
  *
  * Internally this constructs a permutation over a domain of length
- * `range.last - range.first + 1`, then wraps it so that [encode] and [decode]
- * operate directly on values in [range].
+ * `range.last - range.first + 1`, then wraps it so that [IntPermutation.encode]
+ * and [IntPermutation.decode] operate directly on values in [range].
  *
  * The same implementation selection rules and default [rounds] logic as
  * [longPermutation] are used based on the range length.
@@ -240,7 +240,7 @@ fun longPermutation(
  * Creates a [LongPermutation] for the given inclusive [range] using a
  * seed-based [Random] instance.
  *
- * This overload behaves like [longPermutation] with an explicit [rng], but
+ * This overload behaves like [longPermutation] with an explicit rng, but
  * derives the random source from [seed].
  *
  * @param range inclusive range of values to permute.
